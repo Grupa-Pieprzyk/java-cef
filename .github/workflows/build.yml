@@ -1,0 +1,69 @@
+name: Build JCEF (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    env:
+      JAVA_HOME: C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk\17.0.*/x64
+      DEPOT_TOOLS_WIN_TOOLCHAIN: 0
+      GYP_MSVS_VERSION: 2022
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Python and tools
+        run: |
+          choco install -y python --version=3.10.9
+          python -m pip install --upgrade pip
+
+      - name: Add depot_tools to PATH
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$env:GITHUB_WORKSPACE\depot_tools" >> $env:GITHUB_PATH
+
+      - name: Setup environment
+        run: |
+          echo "Setting environment variables..."
+          $env:PATH = "$env:GITHUB_WORKSPACE\depot_tools;$env:PATH"
+          [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Process")
+
+      - name: Clone JCEF source
+        run: |
+          cd $env:GITHUB_WORKSPACE
+          mkdir jcef
+          cd jcef
+          git clone https://bitbucket.org/chromiumembedded/cef.git
+          cd cef
+          git checkout master
+          cd ..
+
+          move "$env:GITHUB_WORKSPACE" jcef_build
+          cd jcef_build
+
+      - name: Build JCEF
+        shell: cmd
+        run: |
+          set JAVA_HOME=%JAVA_HOME%
+          set PATH=%JAVA_HOME%\bin;%PATH%
+          call build.bat
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jcef-windows-artifacts
+          path: ../jcef/out/*
