@@ -63,7 +63,7 @@ jobs:
           call build.bat
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jcef-windows-artifacts
           path: ../jcef/out/*
